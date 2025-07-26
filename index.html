@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Serial Manipulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom CSS for better styling and responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            background-color: #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+        h1, h2, h3 {
+            color: #1a202c;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        h1 { font-size: 2.5rem; }
+        h2 { font-size: 2rem; }
+        h3 { font-size: 1.5rem; }
+
+        canvas {
+            display: block;
+            background-color: #e2e8f0;
+            border-radius: 10px;
+            margin: 0 auto;
+            border: 1px solid #cbd5e0;
+        }
+        .slider-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .slider-group label {
+            width: 120px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        .slider-group input[type="range"] {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #cbd5e0;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 5px;
+        }
+        .slider-group input[type="range"]:hover {
+            opacity: 1;
+        }
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .slider-group input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #4299e1;
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .value-display {
+            width: 60px;
+            text-align: right;
+            font-weight: 600;
+            color: #2b6cb0;
+        }
+        .btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-primary {
+            background-color: #4299e1;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #3182ce;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-secondary {
+            background-color: #edf2f7;
+            color: #4a5568;
+            border: 1px solid #cbd5e0;
+        }
+        .btn-secondary:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        .joint-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        .joint-table th, .joint-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        .joint-table th {
+            background-color: #f7fafc;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        .joint-table tbody tr:nth-child(even) {
+            background-color: #f0f4f8;
+        }
+        .joint-table tbody tr:hover {
+            background-color: #e2e8f0;
+        }
+        /* Alarm Message Box Styling */
+        #alarmMessageBox {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            animation: pulse 1s infinite alternate; /* Pulsing animation */
+        }
+
+        /* Hold Message Box Styling */
+        #holdMessageBox {
+            position: fixed;
+            bottom: 80px; /* Position slightly above alarmMessageBox */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 128, 0, 0.8); /* Green background */
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+            box-shadow: 0 0 15px rgba(0, 128, 0, 0.6);
+            animation: pulse 1s infinite alternate; /* Pulsing animation */
+        }
+
+        @keyframes pulse {
+            from {
+                transform: translateX(-50%) scale(1);
+                opacity: 0.8;
+            }
+            to {
+                transform: translateX(-50%) scale(1.05);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container">
+        <header class="text-center py-10">
+            <h1 class="text-5xl font-extrabold text-blue-700">3D Serial Manipulator</h1>
+            <p class="text-xl text-gray-600 mt-3">Interactive Forward Kinematics & Control</p>
+        </header>
+
+        <div class="flex flex-col md:flex-row gap-6 mb-6">
+            <!-- Left Column: Manipulator Simulation -->
+            <section class="card md:w-2/3 flex flex-col items-center justify-center relative">
+                <h2 class="text-3xl">1. Manipulator Simulation</h2>
+                <canvas id="manipulatorCanvas" class="w-full h-96"></canvas>
+                <div id="alarmMessageBox">
+                    WARNING: End Effector Touches Floor!
+                </div>
+                <div id="holdMessageBox">
+                    Gripper Holding Object!
+                </div>
+            </section>
+
+            <!-- Right Column: Controls -->
+            <section class="card md:w-1/3">
+                <h2 class="text-3xl">2. Manipulator Controls</h2>
+                <!-- Joint Configuration -->
+                <div>
+                    <h3 class="text-2xl mb-4">Configuration</h3>
+                    <div class="slider-group">
+                        <label for="numJointsSlider">Number of Joints:</label>
+                        <input type="range" id="numJointsSlider" min="1" max="4" step="1" value="2">
+                        <span id="numJointsValue" class="value-display">2</span>
+                    </div>
+                </div>
+
+                <!-- Base Rotation -->
+                <div class="mt-8">
+                    <h3 class="text-2xl mb-4">Base Control</h3>
+                    <div class="slider-group">
+                        <label for="baseRotationSlider">Base Rotation (θ<sub>0</sub>):</label>
+                        <input type="range" id="baseRotationSlider" min="0" max="360" step="1" value="0">
+                        <span id="baseRotationValue" class="value-display">0°</span>
+                    </div>
+                </div>
+            
+                <!-- Joint Angle Controls (Dynamic) -->
+                <div id="jointControls" class="mt-8">
+                    <h3 class="text-2xl mb-4">Joint Angles (Elbows)</h3>
+                    <!-- Sliders for joints will be dynamically added here -->
+                </div>
+
+                <!-- End Effector Control -->
+                <div class="mt-8">
+                    <h3 class="text-2xl mb-4">End Effector (Gripper)</h3>
+                    <div class="slider-group">
+                        <label for="gripperSlider">Gripper Opening:</label>
+                        <input type="range" id="gripperSlider" min="0" max="1" step="0.01" value="0.5">
+                        <span id="gripperValue" class="value-display">50%</span>
+                    </div>
+                </div>
+
+                <!-- Target Object Controls -->
+                <div class="mt-8">
+                    <h3 class="text-2xl mb-4">Target Object</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="slider-group">
+                            <label for="targetXSlider">Target X:</label>
+                            <input type="range" id="targetXSlider" min="-2" max="2" step="0.1" value="0.0">
+                            <span id="targetXValue" class="value-display">0.0</span>
+                        </div>
+                        <div class="slider-group">
+                            <label for="targetYSlider">Target Y:</label>
+                            <input type="range" id="targetYSlider" min="0" max="3" step="0.1" value="0.05">
+                            <span id="targetYValue" class="value-display">0.05</span>
+                        </div>
+                        <div class="slider-group">
+                            <label for="targetZSlider">Target Z:</label>
+                            <input type="range" id="targetZSlider" min="-2" max="2" step="0.1" value="-1.0">
+                            <span id="targetZValue" class="value-display">-1.0</span>
+                        </div>
+                    </div>
+                    <button id="randomTargetButton" class="btn btn-secondary w-full mt-4">Random Target</button>
+                </div>
+            </section>
+        </div>
+
+        <section class="card">
+            <h2 class="text-3xl">3. Dynamic Calculations (Forward Kinematics)</h2>
+            <p class="mt-4 text-lg">
+                The table below shows the calculated 3D coordinates (X, Y, Z) for each joint and the end effector based on the current joint angles.
+            </p>
+            <div class="table-container">
+                <table id="jointCoordinatesTable" class="joint-table">
+                    <thead>
+                        <tr>
+                            <th>Component</th>
+                            <th>X (m)</th>
+                            <th>Y (m)</th>
+                            <th>Z (m)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Joint coordinates will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 class="text-2xl mt-8 mb-4">End Effector Orientation</h3>
+            <p id="endEffectorOrientation" class="text-lg">
+                <!-- End effector orientation will be displayed here -->
+            </p>
+        </section>
+
+        <footer class="text-center py-10 text-gray-600 text-sm">
+            <p>&copy; 2025 Serial Manipulator Web App. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Three.js CDN for 3D rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls.js for camera interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // --- Global Variables and Constants ---
+        let scene, camera, renderer, controls;
+        let manipulatorGroup; // Group to hold all manipulator parts
+        let targetObject;
+        const linkLength = 0.8; // Length of each link
+        let numJoints = 2; // Default number of joints (excluding base and end effector)
+        let jointAngles = []; // Array to store current angles for each joint (excluding base)
+        let baseRotationAngle = 0; // Angle for base rotation
+        let gripperOpening = 0.5; // Gripper opening state (0 to 1)
+        let isHoldingObject = false; // New state for gripping
+
+        // Three.js objects for manipulator parts
+        let baseMesh;
+        let links = []; // Stores the THREE.Mesh objects for the visual links
+        let joints = []; // Stores the THREE.Group objects that act as joint pivots/rotation points
+        let endEffector = new THREE.Group();
+        let gripperLeft, gripperRight;
+        let gripperHoldPoint; // New group for the object's attachment point
+
+        // --- DOM Elements ---
+        const manipulatorCanvas = document.getElementById('manipulatorCanvas');
+        const numJointsSlider = document.getElementById('numJointsSlider');
+        const numJointsValue = document.getElementById('numJointsValue');
+        const baseRotationSlider = document.getElementById('baseRotationSlider');
+        const baseRotationValue = document.getElementById('baseRotationValue');
+        const jointControlsDiv = document.getElementById('jointControls');
+        const gripperSlider = document.getElementById('gripperSlider');
+        const gripperValue = document.getElementById('gripperValue');
+        const targetXSlider = document.getElementById('targetXSlider');
+        const targetYSlider = document.getElementById('targetYSlider');
+        const targetZSlider = document.getElementById('targetZSlider');
+        const targetXValue = document.getElementById('targetXValue');
+        const targetYValue = document.getElementById('targetYValue');
+        const targetZValue = document.getElementById('targetZValue');
+        const randomTargetButton = document.getElementById('randomTargetButton');
+        const jointCoordinatesTableBody = document.getElementById('jointCoordinatesTable').getElementsByTagName('tbody')[0];
+        const endEffectorOrientationDisplay = document.getElementById('endEffectorOrientation');
+        const alarmMessageBox = document.getElementById('alarmMessageBox'); // Get the alarm message box element
+        const holdMessageBox = document.getElementById('holdMessageBox'); // Get the new hold message box element
+
+        // --- Initialization Functions ---
+
+        /**
+         * Initializes the Three.js scene, camera, renderer, and orbit controls.
+         */
+        function initThreeJS() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f2f5); // Light grey background, matching requested theme
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, manipulatorCanvas.clientWidth / manipulatorCanvas.clientHeight, 0.1, 1000);
+            camera.position.set(3, 3, 3);
+            camera.lookAt(0, 1, 0); // Look at the base of the manipulator
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: manipulatorCanvas, antialias: true });
+            renderer.setSize(manipulatorCanvas.clientWidth, manipulatorCanvas.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true; // Enable shadows
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+
+            // Orbit Controls (for camera interaction)
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 1, 0); // Keep focus on manipulator base
+            controls.update();
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Soft white ambient light (slightly increased)
+            scene.add(ambientLight);
+
+            const directionalLight1 = new THREE.DirectionalLight(0xffffff, 0.5); // Brighter directional light (reduced intensity for lighter shadows)
+            directionalLight1.position.set(5, 10, 5);
+            directionalLight1.castShadow = true; // Light casts shadows
+            directionalLight1.shadow.mapSize.width = 1024; // Higher resolution shadows
+            directionalLight1.shadow.mapSize.height = 1024;
+            directionalLight1.shadow.camera.near = 0.5;
+            directionalLight1.shadow.camera.far = 20;
+            directionalLight1.shadow.camera.left = -5;
+            directionalLight1.shadow.camera.right = 5;
+            directionalLight1.shadow.camera.top = 5;
+            directionalLight1.shadow.camera.bottom = -5;
+            scene.add(directionalLight1);
+
+            // Ground Plane
+            const planeGeometry = new THREE.PlaneGeometry(10, 10);
+            const planeMaterial = new THREE.MeshStandardMaterial({ color: 0xcbd5e0, side: THREE.DoubleSide }); // Standard material for shadows
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.receiveShadow = true; // Plane receives shadows
+            scene.add(plane);
+
+            // Manipulator Group
+            manipulatorGroup = new THREE.Group();
+            scene.add(manipulatorGroup);
+
+            // Target Object
+            const targetGeometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const targetMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Standard material for shadows
+            targetObject = new THREE.Mesh(targetGeometry, targetMaterial);
+            targetObject.castShadow = true; // Target casts shadows
+            scene.add(targetObject);
+            setRandomTargetPosition(); // Set initial target position
+        }
+
+        /**
+         * Creates the base of the manipulator.
+         */
+        function createBase() {
+            const baseHeight = 0.5;
+            const baseRadius = 0.3;
+            const baseGeometry = new THREE.CylinderGeometry(baseRadius, baseRadius, baseHeight, 32);
+            const baseMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.3, roughness: 0.5 }); // Standard material
+            baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+            baseMesh.position.y = baseHeight / 2; // Base sits on the ground
+            baseMesh.castShadow = true; // Base casts shadows
+            baseMesh.receiveShadow = true; // Base receives shadows
+            manipulatorGroup.add(baseMesh);
+        }
+
+        /**
+         * Creates a single link mesh.
+         * @returns {THREE.Mesh} The link mesh.
+         */
+        function createLinkMesh() {
+            // Changed to CylinderGeometry for rounded arms
+            const linkGeometry = new THREE.CylinderGeometry(0.1, 0.1, linkLength, 32); // radiusTop, radiusBottom, height, radialSegments
+            const linkMaterial = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.3, roughness: 0.5 }); // Standard material
+            const link = new THREE.Mesh(linkGeometry, linkMaterial);
+            link.position.y = linkLength / 2;
+            link.castShadow = true; // Link casts shadows
+            link.receiveShadow = true; // Link receives shadows
+            return link;
+        }
+
+        /**
+         * Creates a single joint mesh (visual sphere).
+         * @returns {THREE.Mesh} The joint mesh.
+         */
+        function createJointMesh() {
+            const jointGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+            const jointMaterial = new THREE.MeshStandardMaterial({ color: 0x4299e1, metalness: 0.6, roughness: 0.3 }); // Blue, more metallic for joints
+            const joint = new THREE.Mesh(jointGeometry, jointMaterial);
+            joint.castShadow = true; // Joint casts shadows
+            joint.receiveShadow = true; // Joint receives shadows
+            return joint;
+        }
+
+        /**
+         * Creates the end effector (gripper).
+         */
+        function createEndEffector() {
+            endEffector = new THREE.Group(); // This group is attached to the last link
+
+            // Create a sub-group to handle the fixed downward orientation of the gripper
+            const gripperOrientationGroup = new THREE.Group();
+            gripperOrientationGroup.rotation.x = Math.PI / 2; // Rotate to point downwards
+            endEffector.add(gripperOrientationGroup);
+
+            // Gripper Body (main part)
+            const bodyWidth = 0.2;
+            const bodyHeight = 0.2;
+            const bodyDepth = 0.3;
+            const gripperBodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth);
+            const gripperBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x6b46c1, metalness: 0.4, roughness: 0.6 }); // Purple
+            const gripperBody = new THREE.Mesh(gripperBodyGeometry, gripperBodyMaterial);
+            gripperBody.position.y = bodyDepth / 2; // Position relative to rotated orientation
+            gripperBody.castShadow = true;
+            gripperBody.receiveShadow = true;
+            gripperOrientationGroup.add(gripperBody);
+
+            // Finger Geometry - now cylindrical
+            const fingerRadius = 0.05;
+            const fingerLength = 0.3; 
+            const fingerGeometry = new THREE.CylinderGeometry(fingerRadius, fingerRadius, fingerLength, 16); // Cylindrical fingers
+            const fingerMaterial = new THREE.MeshStandardMaterial({ color: 0x9f7aea, metalness: 0.5, roughness: 0.4 }); // Lighter purple
+
+            // Left Finger
+            gripperLeft = new THREE.Mesh(fingerGeometry, fingerMaterial);
+            gripperLeft.position.set(-bodyWidth / 2, bodyDepth + (fingerLength / 2), 0); // Adjusted for cylindrical fingers
+            gripperLeft.castShadow = true;
+            gripperLeft.receiveShadow = true;
+            gripperOrientationGroup.add(gripperLeft);
+
+            // Right Finger
+            gripperRight = new THREE.Mesh(fingerGeometry, fingerMaterial);
+            gripperRight.position.set(bodyWidth / 2, bodyDepth + (fingerLength / 2), 0); // Adjusted for cylindrical fingers
+            gripperRight.castShadow = true;
+            gripperRight.receiveShadow = true;
+            gripperOrientationGroup.add(gripperRight);
+
+            // Gripper Hold Point - where the object will be attached
+            gripperHoldPoint = new THREE.Group();
+            gripperHoldPoint.position.set(0, bodyDepth + fingerLength, 0); // At the very bottom center of the gripper
+            gripperOrientationGroup.add(gripperHoldPoint);
+        }
+
+        /**
+         * Builds or rebuilds the manipulator based on the number of joints.
+         */
+        function buildManipulator() {
+            // Clear existing parts
+            manipulatorGroup.clear();
+            links = [];
+            joints = []; // This will store the THREE.Group objects that act as joint pivots
+            jointAngles = Array(numJoints).fill(0); // Reset joint angles
+
+            // 1. Create Base
+            const baseHeight = 0.5;
+            createBase(); // baseMesh is added to manipulatorGroup inside createBase
+
+            let currentParent = baseMesh; // The object to which the next joint group will be added
+
+            // 2. Create Joints and Links
+            for (let i = 0; i < numJoints; i++) {
+                // Create a THREE.Group for the joint's pivot and rotation
+                const jointRotationGroup = new THREE.Group();
+                
+                // Position this joint group relative to its parent
+                if (i === 0) {
+                    jointRotationGroup.position.y = baseHeight / 2; // Relative to baseMesh's center
+                } else {
+                    jointRotationGroup.position.y = linkLength; 
+                }
+                currentParent.add(jointRotationGroup); // Attach to the current parent
+
+                // Add the visual joint sphere
+                const jointMesh = createJointMesh();
+                jointRotationGroup.add(jointMesh); 
+
+                // Create the link mesh
+                const linkMesh = createLinkMesh(); 
+                linkMesh.position.y = linkLength / 2; 
+                jointRotationGroup.add(linkMesh); 
+
+                // Store the joint rotation group
+                joints.push(jointRotationGroup);
+
+                // Update for the next iteration:
+                currentParent = jointRotationGroup; 
+            }
+
+            // 3. Create End Effector
+            createEndEffector();
+            if (numJoints > 0) {
+                endEffector.position.y = linkLength; 
+                currentParent.add(endEffector);
+            } else {
+                // If no joints, attach directly to base
+                baseMesh.add(endEffector);
+                endEffector.position.y = baseHeight / 2 + 0.1; // Slightly above base
+            }
+
+            // Dynamically create joint angle sliders
+            createJointAngleSliders();
+            updateManipulator(); // Initial update
+        }
+
+        /**
+         * Dynamically creates sliders for each joint angle.
+         */
+        function createJointAngleSliders() {
+            jointControlsDiv.innerHTML = ''; // Clear previous sliders
+            for (let i = 0; i < numJoints; i++) {
+                const sliderGroup = document.createElement('div');
+                sliderGroup.className = 'slider-group';
+                sliderGroup.innerHTML = `
+                    <label for="jointAngleSlider${i}">Joint ${i + 1} Angle (θ<sub>${i + 1}</sub>):</label>
+                    <input type="range" id="jointAngleSlider${i}" min="0" max="135" step="1" value="0">
+                    <span id="jointAngleValue${i}" class="value-display">0°</span>
+                `;
+                jointControlsDiv.appendChild(sliderGroup);
+
+                const slider = document.getElementById(`jointAngleSlider${i}`);
+                const valueDisplay = document.getElementById(`jointAngleValue${i}`);
+
+                // Initialize angle from array if it exists, otherwise 0
+                jointAngles[i] = jointAngles[i] !== undefined ? jointAngles[i] : 0;
+                slider.value = jointAngles[i];
+                valueDisplay.textContent = `${jointAngles[i]}°`;
+
+                slider.addEventListener('input', (e) => {
+                    jointAngles[i] = parseFloat(e.target.value);
+                    valueDisplay.textContent = `${jointAngles[i]}°`;
+                    updateManipulator();
+                });
+            }
+        }
+
+        /**
+         * Updates the manipulator's geometry based on current joint angles and base rotation.
+         * This performs Forward Kinematics.
+         */
+        function updateManipulator() {
+            // Apply base rotation
+            if (baseMesh) { 
+                baseMesh.rotation.y = baseRotationAngle * Math.PI / 180;
+            }
+
+            // Apply joint rotations (elbows)
+            for (let i = 0; i < joints.length; i++) {
+                if (joints[i]) { 
+                    joints[i].rotation.x = jointAngles[i] * Math.PI / 180;
+                }
+            }
+
+            // Update gripper (this now includes pick/place logic)
+            updateGripper();
+
+            // Calculate and display coordinates
+            calculateAndDisplayJointCoordinates();
+
+            // Check for end effector touching the floor
+            let endEffectorGlobalPos = new THREE.Vector3();
+            if (endEffector) {
+                endEffector.getWorldPosition(endEffectorGlobalPos);
+                // Define a threshold for "touching the floor" (Y coordinate close to 0)
+                const floorThreshold = 0.05; 
+                if (endEffectorGlobalPos.y <= floorThreshold) {
+                    alarmMessageBox.style.display = 'block'; // Show alarm
+                } else {
+                    alarmMessageBox.style.display = 'none'; // Hide alarm
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        /**
+         * Updates the gripper opening visually and handles pick/place logic.
+         */
+        function updateGripper() {
+            // Gripper opening: 0 is closed, 1 is fully open
+            const maxOpenDistance = 0.15; // Max distance each finger moves
+            gripperLeft.position.x = -0.1 - (gripperOpening * maxOpenDistance);
+            gripperRight.position.x = 0.1 + (gripperOpening * maxOpenDistance);
+
+            // --- Pick/Place Logic ---
+            const gripperClosedThreshold = 0.1; // How "closed" the gripper needs to be to pick
+            const pickDistanceThreshold = 0.2; // How close the end effector needs to be to the object
+
+            let targetObjectGlobalPos = new THREE.Vector3();
+            targetObject.getWorldPosition(targetObjectGlobalPos);
+
+            let gripperHoldPointGlobalPos = new THREE.Vector3();
+            gripperHoldPoint.getWorldPosition(gripperHoldPointGlobalPos);
+
+            const distance = gripperHoldPointGlobalPos.distanceTo(targetObjectGlobalPos);
+
+            // Logic to pick up object
+            if (gripperOpening <= gripperClosedThreshold && distance < pickDistanceThreshold && !isHoldingObject) {
+                // Attach object to the gripperHoldPoint
+                gripperHoldPoint.attach(targetObject);
+                isHoldingObject = true;
+                // Show hold message
+                holdMessageBox.style.display = 'block';
+                // Disable target object sliders when held
+                targetXSlider.disabled = true;
+                targetYSlider.disabled = true;
+                targetZSlider.disabled = true;
+                randomTargetButton.disabled = true;
+            } 
+            // Logic to release object
+            else if (gripperOpening > gripperClosedThreshold && isHoldingObject) {
+                // Detach object from gripperHoldPoint and attach to scene
+                scene.attach(targetObject);
+                isHoldingObject = false;
+                // Hide hold message
+                holdMessageBox.style.display = 'none';
+                // Enable target object sliders when released
+                targetXSlider.disabled = false;
+                targetYSlider.disabled = false;
+                targetZSlider.disabled = false;
+                randomTargetButton.disabled = false;
+            }
+        }
+
+        /**
+         * Calculates the global (X, Y, Z) coordinates for each joint and the end effector.
+         * This is Forward Kinematics.
+         */
+        function calculateAndDisplayJointCoordinates() {
+            jointCoordinatesTableBody.innerHTML = ''; // Clear previous data
+
+            // Base coordinates (relative to manipulatorGroup, which is at scene origin)
+            let baseGlobalPos = new THREE.Vector3();
+            if (baseMesh) { 
+                baseMesh.getWorldPosition(baseGlobalPos);
+                addCoordinateRow('Base', baseGlobalPos);
+            }
+
+            // Iterate through joints and links
+            for (let i = 0; i < numJoints; i++) { 
+                let jointGlobalPos = new THREE.Vector3();
+                if (joints[i]) { 
+                    joints[i].getWorldPosition(jointGlobalPos); 
+                    addCoordinateRow(`Joint ${i + 1}`, jointGlobalPos);
+                }
+            }
+
+            // End Effector coordinates
+            let endEffectorGlobalPos = new THREE.Vector3();
+            if (endEffector) { 
+                endEffector.getWorldPosition(endEffectorGlobalPos);
+                addCoordinateRow('End Effector', endEffectorGlobalPos);
+            }
+
+            // End Effector Orientation (Euler angles or Quaternion)
+            let endEffectorGlobalRot = new THREE.Euler();
+            let tempQuaternion = new THREE.Quaternion();
+            if (endEffector) { 
+                endEffector.getWorldQuaternion(tempQuaternion);
+                endEffectorGlobalRot.setFromQuaternion(tempQuaternion);
+                endEffectorOrientationDisplay.textContent = `Roll: ${(endEffectorGlobalRot.x * 180 / Math.PI).toFixed(1)}°, Pitch: ${(endEffectorGlobalRot.y * 180 / Math.PI).toFixed(1)}°, Yaw: ${(endEffectorGlobalRot.z * 180 / Math.PI).toFixed(1)}°`;
+            } else {
+                endEffectorOrientationDisplay.textContent = `End Effector Not Available`;
+            }
+        }
+
+        /**
+         * Adds a row to the joint coordinates table.
+         * @param {string} name - Name of the component (e.g., "Joint 1", "End Effector").
+         * @param {THREE.Vector3} position - The global position of the component.
+         */
+        function addCoordinateRow(name, position) {
+            const row = jointCoordinatesTableBody.insertRow();
+            row.insertCell().textContent = name;
+            row.insertCell().textContent = position.x.toFixed(3);
+            row.insertCell().textContent = position.y.toFixed(3);
+            row.insertCell().textContent = position.z.toFixed(3);
+        }
+
+        /**
+         * Sets a random position for the target object.
+         */
+        function setRandomTargetPosition() {
+            targetXSlider.value = (Math.random() * 2 - 1).toFixed(1); // -1 to 1
+            targetYSlider.value = (Math.random() * 0.15 + 0.05).toFixed(2); // 0.05 to 0.20 (just above floor)
+            targetZSlider.value = (Math.random() * 1 - 1.0).toFixed(1); // -1.0 to 0.0 (in front of manipulator)
+            updateTargetPosition();
+        }
+
+        /**
+         * Updates the target object's position based on slider values.
+         */
+        function updateTargetPosition() {
+            if (targetObject && !isHoldingObject) { // Only update if not holding
+                targetObject.position.set(
+                    parseFloat(targetXSlider.value),
+                    parseFloat(targetYSlider.value),
+                    parseFloat(targetZSlider.value)
+                );
+            }
+            targetXValue.textContent = targetXSlider.value;
+            targetYValue.textContent = targetYSlider.value;
+            targetZValue.textContent = targetZSlider.value;
+            renderer.render(scene, camera);
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+
+        // --- Event Listeners ---
+        numJointsSlider.addEventListener('input', (e) => {
+            numJointsValue.textContent = e.target.value;
+            numJoints = parseInt(e.target.value);
+            buildManipulator(); // Immediately rebuild when number of joints changes
+        });
+
+        baseRotationSlider.addEventListener('input', (e) => {
+            baseRotationAngle = parseFloat(e.target.value);
+            baseRotationValue.textContent = `${baseRotationAngle}°`;
+            updateManipulator();
+        });
+
+        gripperSlider.addEventListener('input', (e) => {
+            gripperOpening = parseFloat(e.target.value);
+            gripperValue.textContent = `${(gripperOpening * 100).toFixed(0)}%`;
+            updateGripper(); // Call updateGripper directly as it has pick/place logic
+            updateManipulator(); // Also call main update to refresh everything
+        });
+
+        targetXSlider.addEventListener('input', updateTargetPosition);
+        targetYSlider.addEventListener('input', updateTargetPosition);
+        targetZSlider.addEventListener('input', updateTargetPosition);
+        randomTargetButton.addEventListener('click', setRandomTargetPosition);
+
+        // Initial setup on window load
+        window.onload = function() {
+            initThreeJS();
+            buildManipulator(); // Build initial manipulator
+            animate(); // Start animation loop
+        };
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = manipulatorCanvas.clientWidth / manipulatorCanvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(manipulatorCanvas.clientWidth, manipulatorCanvas.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+        });
+    </script>
+</body>
+</html>
