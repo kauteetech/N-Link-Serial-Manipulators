@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> N Link Serial Manipulator</title>
+    <title>N Link Serial Manipulator</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom CSS for better styling and responsiveness */
-        body {
+        html, body {
+            height: 100%; /* Ensure html and body take full viewport height */
+            margin: 0;
+            overflow: hidden; /* Prevent overall scrollbars unless content overflows specific sections */
             font-family: 'Inter', sans-serif;
             background-color: #f0f2f5;
             color: #333;
@@ -18,6 +21,9 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            height: 100%; /* Make container take full height */
+            display: flex; /* Use flexbox for overall layout */
+            flex-direction: column; /* Stack sections vertically */
         }
         .card {
             background-color: #fff;
@@ -41,6 +47,8 @@
             border-radius: 10px;
             margin: 0 auto;
             border: 1px solid #cbd5e0;
+            width: 100%; /* Canvas takes full width of its parent */
+            height: 100%; /* Canvas takes full height of its parent */
         }
         .slider-group {
             display: flex;
@@ -143,7 +151,7 @@
         }
         /* Alarm Message Box Styling */
         #alarmMessageBox {
-            position: fixed;
+            position: absolute; /* Changed to absolute to position relative to parent section */
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
@@ -162,7 +170,7 @@
 
         /* Hold Message Box Styling */
         #holdMessageBox {
-            position: fixed;
+            position: absolute; /* Changed to absolute to position relative to parent section */
             bottom: 80px; /* Position slightly above alarmMessageBox */
             left: 50%;
             transform: translateX(-50%);
@@ -192,17 +200,17 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div class="container">
+    <div class="container min-h-screen">
         <header class="text-center py-10">
             <h1 class="text-5xl font-extrabold text-blue-700">N Link Serial Manipulator</h1>
             <p class="text-xl text-gray-600 mt-3">Interactive Forward Kinematics & Control</p>
         </header>
 
-        <div class="flex flex-col md:flex-row gap-6 mb-6">
-            <!-- Left Column: Manipulator Simulation -->
-            <section class="card md:w-2/3 flex flex-col items-center justify-center relative">
-                <h2 class="text-3xl"> Manipulator Simulation</h2>
-                <canvas id="manipulatorCanvas" class="w-full h-96"></canvas>
+        <div class="flex flex-col md:flex-row flex-grow gap-6 mb-6">
+            <!-- Left Column: Manipulator Simulation (Larger) -->
+            <section class="card md:w-3/4 flex flex-col items-center justify-center relative">
+                <h2 class="text-3xl">Manipulator Simulation</h2>
+                <canvas id="manipulatorCanvas" class="flex-grow"></canvas> <!-- flex-grow to fill available height -->
                 <div id="alarmMessageBox">
                     WARNING: End Effector Touches Floor!
                 </div>
@@ -211,9 +219,9 @@
                 </div>
             </section>
 
-            <!-- Right Column: Controls -->
-            <section class="card md:w-1/3">
-                <h2 class="text-3xl"> Manipulator Controls</h2>
+            <!-- Right Column: Controls (Smaller) -->
+            <section class="card md:w-1/4 overflow-y-auto"> <!-- Added overflow-y-auto for scrollable controls if needed -->
+                <h2 class="text-3xl">Manipulator Controls</h2>
                 <!-- Joint Configuration -->
                 <div>
                     <h3 class="text-2xl mb-4">Configuration</h3>
@@ -276,7 +284,7 @@
         </div>
 
         <section class="card">
-            <h2 class="text-3xl"> Dynamic Calculations (Forward Kinematics)</h2>
+            <h2 class="text-3xl">Dynamic Calculations (Forward Kinematics)</h2>
             <p class="mt-4 text-lg">
                 The table below shows the calculated 3D coordinates (X, Y, Z) for each joint and the end effector based on the current joint angles.
             </p>
