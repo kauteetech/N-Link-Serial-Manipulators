@@ -1,4 +1,4 @@
-# 3D Serial Manipulator Web App
+# N link Serial Manipulator 3D Simulator
 
 ## Description
 
