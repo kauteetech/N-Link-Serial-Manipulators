@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,7 +13,6 @@
         html, body {
             height: 100%; /* Ensure html and body take full viewport height */
             margin: 0;
-            /* Removed: overflow: hidden; */ /* This was causing the scroll lock */
             font-family: 'Inter', sans-serif;
             background-color: #f0f2f5;
             color: #333;
@@ -21,7 +22,6 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            /* Removed fixed height: height: 100%; */ /* Allow container to grow with content */
             min-height: 100vh; /* Ensure it takes at least full viewport height */
             display: flex; /* Use flexbox for overall layout */
             flex-direction: column; /* Stack sections vertically */
@@ -201,7 +201,7 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div class="container"> <!-- Removed min-h-screen from here as body now handles it -->
+    <div class="container">
         <header class="text-center py-10">
             <h1 class="text-5xl font-extrabold text-blue-700">N Link Serial Manipulator</h1>
             <p class="text-xl text-gray-600 mt-3">Interactive Forward Kinematics & Control</p>
@@ -262,6 +262,15 @@
                 <!-- Target Object Controls -->
                 <div class="mt-8">
                     <h3 class="text-2xl mb-4">Target Object</h3>
+                    <div class="slider-group">
+                        <label for="objectSelect">Object Type:</label>
+                        <select id="objectSelect" class="flex-grow p-2 border rounded-md">
+                            <option value="sphere">Ball</option>
+                            <option value="box">Cuboid</option>
+                            <option value="cube">Cube</option>
+                            <option value="pyramid">Pyramid</option>
+                        </select>
+                    </div>
                     <div class="grid grid-cols-1 gap-4">
                         <div class="slider-group">
                             <label for="targetXSlider">Target X:</label>
@@ -280,6 +289,7 @@
                         </div>
                     </div>
                     <button id="randomTargetButton" class="btn btn-secondary w-full mt-4">Random Target</button>
+                    <button id="resetButton" class="btn btn-secondary w-full mt-4">Reset Manipulator</button>
                 </div>
             </section>
         </div>
@@ -362,6 +372,8 @@
         const endEffectorOrientationDisplay = document.getElementById('endEffectorOrientation');
         const alarmMessageBox = document.getElementById('alarmMessageBox'); // Get the alarm message box element
         const holdMessageBox = document.getElementById('holdMessageBox'); // Get the new hold message box element
+        const resetButton = document.getElementById('resetButton'); // Get the reset button
+        const objectSelect = document.getElementById('objectSelect'); // Get the object type dropdown
 
         // --- Initialization Functions ---
 
@@ -419,12 +431,8 @@
             manipulatorGroup = new THREE.Group();
             scene.add(manipulatorGroup);
 
-            // Target Object
-            const targetGeometry = new THREE.SphereGeometry(0.1, 32, 32);
-            const targetMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Standard material for shadows
-            targetObject = new THREE.Mesh(targetGeometry, targetMaterial);
-            targetObject.castShadow = true; // Target casts shadows
-            scene.add(targetObject);
+            // Target Object (initialized with default sphere)
+            createTargetObject('sphere');
             setRandomTargetPosition(); // Set initial target position
         }
 
@@ -490,16 +498,17 @@
 
             // Create a sub-group to handle the fixed downward orientation of the gripper
             gripperOrientationGroup = new THREE.Group();
-            gripperOrientationGroup.rotation.x = Math.PI / 2; // Rotate to point downwards
+            // Corrected: Rotate to point downwards when the arm is extended forward
+            gripperOrientationGroup.rotation.x = -Math.PI / 2; 
             // Shift the entire gripper down by the wrist height
             gripperOrientationGroup.position.y = -wristHeight; // Offset from endEffector's origin
             endEffector.add(gripperOrientationGroup);
 
             // Gripper Body (main part - back to purple box)
             const bodyWidth = 0.2;
-            const bodyHeight = 0.2;
-            const bodyDepth = 0.3;
-            const gripperBodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth);
+            const bodyHeight = 0.15; // Thickness along Z
+            const bodyDepth = 0.3; // Length along Y (downwards)
+            const gripperBodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyDepth, bodyHeight); // width, height, depth
             const gripperBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x6b46c1, metalness: 0.4, roughness: 0.6 }); // Purple
             const gripperBody = new THREE.Mesh(gripperBodyGeometry, gripperBodyMaterial);
             gripperBody.position.y = -bodyDepth / 2; // Position relative to rotated orientation
@@ -507,29 +516,43 @@
             gripperBody.receiveShadow = true;
             gripperOrientationGroup.add(gripperBody);
 
-            // Finger Geometry - now cylindrical (restored)
-            const fingerRadius = 0.05;
-            const fingerLength = 0.3; 
-            const fingerGeometry = new THREE.CylinderGeometry(fingerRadius, fingerRadius, fingerLength, 16); // Cylindrical fingers
+            // Finger Geometry - now rectangular cuboid with finger-like ratios
+            const fingerWidth = 0.08; // X-dimension: how wide each finger is
+            const fingerHeight = 0.25; // Y-dimension: how long each finger extends downwards
+            const fingerDepth = 0.08; // Z-dimension: how thick each finger is
+            const fingerGeometry = new THREE.BoxGeometry(fingerWidth, fingerHeight, fingerDepth);
             const fingerMaterial = new THREE.MeshStandardMaterial({ color: 0x9f7aea, metalness: 0.5, roughness: 0.4 }); // Lighter purple
 
-            // Left Finger (restored positioning)
+            // Define the X-offset for the fingers when closed, from the center of the gripper body
+            // This determines the initial gap between the fingers
+            const closedFingerXOffset = (bodyWidth / 2) + (fingerWidth / 2) - 0.02; // Adjusted to be slightly outside or flush with body
+
+            // Left Finger
             gripperLeft = new THREE.Mesh(fingerGeometry, fingerMaterial);
-            gripperLeft.position.set(-bodyWidth / 2, -bodyDepth - (fingerLength / 2), 0); // Adjusted for connection
+            gripperLeft.position.set(
+                -closedFingerXOffset, // X-position for left finger
+                -bodyDepth - (fingerHeight / 2), // Y-position below the gripperBody
+                0 // Z-position centered
+            );
             gripperLeft.castShadow = true;
             gripperLeft.receiveShadow = true;
             gripperOrientationGroup.add(gripperLeft);
 
-            // Right Finger (restored positioning)
+            // Right Finger
             gripperRight = new THREE.Mesh(fingerGeometry, fingerMaterial);
-            gripperRight.position.set(bodyWidth / 2, -bodyDepth - (fingerLength / 2), 0); // Adjusted for connection
+            gripperRight.position.set(
+                closedFingerXOffset, // X-position for right finger
+                -bodyDepth - (fingerHeight / 2), // Y-position below the gripperBody
+                0 // Z-position centered
+            );
             gripperRight.castShadow = true;
             gripperRight.receiveShadow = true;
             gripperOrientationGroup.add(gripperRight);
 
-            // Gripper Hold Point - where the object will be attached (restored positioning)
+            // Gripper Hold Point - where the object will be attached
             gripperHoldPoint = new THREE.Group();
-            gripperHoldPoint.position.set(0, -bodyDepth - fingerLength + 0.05, 0); // At the very bottom center of the gripper
+            // Position it between the tips of the fingers when fully closed, slightly above the very end
+            gripperHoldPoint.position.set(0, -bodyDepth - fingerHeight + 0.02, 0); 
             gripperOrientationGroup.add(gripperHoldPoint);
         }
 
@@ -669,9 +692,17 @@
          */
         function updateGripper() {
             // Gripper opening: 0 is closed, 1 is fully open
-            const maxOpenDistance = 0.15; // Max distance each finger moves
-            gripperLeft.position.x = -0.1 - (gripperOpening * maxOpenDistance);
-            gripperRight.position.x = 0.1 + (gripperOpening * maxOpenDistance);
+            const maxOpenDistance = 0.15; // Max horizontal distance each finger moves from its closed position
+            
+            // Define the X-offset for the fingers when closed, from the center of the gripper body
+            // This should match the `closedFingerXOffset` used in `createEndEffector`
+            const bodyWidth = 0.2; // From createEndEffector
+            const fingerWidth = 0.08; // From createEndEffector
+            const closedFingerXOffset = (bodyWidth / 2) + (fingerWidth / 2) - 0.02; 
+
+            // Adjust their X positions based on gripperOpening
+            gripperLeft.position.x = -closedFingerXOffset - (gripperOpening * maxOpenDistance);
+            gripperRight.position.x = closedFingerXOffset + (gripperOpening * maxOpenDistance);
 
             // --- Pick/Place Logic ---
             const gripperClosedThreshold = 0.1; // How "closed" the gripper needs to be to pick
@@ -795,6 +826,86 @@
             renderer.render(scene, camera);
         }
 
+        /**
+         * Creates or updates the target object's geometry based on the selected type.
+         * @param {string} type - The type of object to create ('sphere', 'box', 'cube', 'pyramid').
+         */
+        function createTargetObject(type) {
+            // Remove existing target object from scene if it exists
+            if (targetObject) {
+                scene.remove(targetObject);
+                targetObject.geometry.dispose(); // Clean up geometry
+                // Material might be shared, so only dispose if not shared or if it's the only user
+                // For simplicity here, we'll recreate material each time.
+                // targetObject.material.dispose(); 
+            }
+
+            let geometry;
+            const targetMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red material
+
+            switch (type) {
+                case 'sphere':
+                    geometry = new THREE.SphereGeometry(0.1, 32, 32);
+                    break;
+                case 'box': // Cuboid
+                    geometry = new THREE.BoxGeometry(0.2, 0.3, 0.15); // width, height, depth
+                    break;
+                case 'cube':
+                    geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2); // all sides equal
+                    break;
+                case 'pyramid':
+                    // A pyramid can be approximated with a ConeGeometry with few segments
+                    geometry = new THREE.ConeGeometry(0.15, 0.3, 4); // radius, height, radialSegments (4 for pyramid base)
+                    break;
+                default:
+                    geometry = new THREE.SphereGeometry(0.1, 32, 32); // Default to sphere
+            }
+
+            targetObject = new THREE.Mesh(geometry, targetMaterial);
+            targetObject.castShadow = true;
+            scene.add(targetObject);
+            // Ensure its position is updated after creation, as it might have been reset
+            updateTargetPosition();
+        }
+
+        /**
+         * Resets the manipulator and target object to their initial states.
+         */
+        function resetManipulator() {
+            // Reset number of joints
+            numJoints = 2;
+            numJointsSlider.value = numJoints;
+            numJointsValue.textContent = numJoints;
+
+            // Reset base rotation
+            baseRotationAngle = 0;
+            baseRotationSlider.value = baseRotationAngle;
+            baseRotationValue.textContent = `${baseRotationAngle}°`;
+
+            // Reset gripper opening
+            gripperOpening = 0.5;
+            gripperSlider.value = gripperOpening;
+            gripperValue.textContent = `${(gripperOpening * 100).toFixed(0)}%`;
+
+            isHoldingObject = false; // Ensure object is not held
+            holdMessageBox.style.display = 'none'; // Hide hold message
+
+            // Re-enable target object sliders
+            targetXSlider.disabled = false;
+            targetYSlider.disabled = false;
+            targetZSlider.disabled = false;
+            randomTargetButton.disabled = false;
+
+            // Rebuild manipulator with default joints and reset angles
+            buildManipulator(); // This will also call createJointAngleSliders and updateManipulator
+
+            // Reset target object type and position
+            objectSelect.value = 'sphere'; // Default to ball
+            createTargetObject(objectSelect.value); // Recreate target object with default type
+            setRandomTargetPosition(); // Set a new random position
+        }
+
+
         // --- Animation Loop ---
         function animate() {
             requestAnimationFrame(animate);
@@ -826,6 +937,9 @@
         targetYSlider.addEventListener('input', updateTargetPosition);
         targetZSlider.addEventListener('input', updateTargetPosition);
         randomTargetButton.addEventListener('click', setRandomTargetPosition);
+        resetButton.addEventListener('click', resetManipulator); // New: Reset button event listener
+        objectSelect.addEventListener('change', (e) => { createTargetObject(e.target.value); }); // New: Object type dropdown listener
+
 
         // Initial setup on window load
         window.onload = function() {
@@ -844,4 +958,3 @@
     </script>
 </body>
 </html>
-
