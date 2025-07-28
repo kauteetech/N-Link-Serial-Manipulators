@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,14 +148,12 @@
         .joint-table tbody tr:hover {
             background-color: #e2e8f0;
         }
-        /* Alarm Message Box Styling */
-        #alarmMessageBox {
-            position: absolute; /* Changed to absolute to position relative to parent section */
-            bottom: 20px;
+        /* Message Box Styling - Unified for top center */
+        .message-box {
+            position: absolute;
+            top: 20px; /* Position from the top */
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(255, 0, 0, 0.8);
-            color: white;
             padding: 15px 25px;
             border-radius: 10px;
             font-size: 1.2em;
@@ -165,28 +161,35 @@
             text-align: center;
             z-index: 1000;
             display: none; /* Hidden by default */
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
             animation: pulse 1s infinite alternate; /* Pulsing animation */
         }
 
-        /* Hold Message Box Styling */
+        #alarmMessageBox {
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.6);
+        }
+
         #holdMessageBox {
-            position: absolute; /* Changed to absolute to position relative to parent section */
-            bottom: 80px; /* Position slightly above alarmMessageBox */
-            left: 50%;
-            transform: translateX(-50%);
             background-color: rgba(0, 128, 0, 0.8); /* Green background */
             color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-            text-align: center;
-            z-index: 1000;
-            display: none; /* Hidden by default */
             box-shadow: 0 0 15px rgba(0, 128, 0, 0.6);
-            animation: pulse 1s infinite alternate; /* Pulsing animation */
+            top: 80px; /* Slightly below alarm message if both are active */
         }
+
+        #objectPickedUpMessageBox {
+            background-color: rgba(0, 123, 255, 0.8); /* Blue background */
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.6);
+        }
+
+        #objectPlacedDownMessageBox {
+            background-color: rgba(255, 165, 0, 0.8); /* Orange background */
+            color: white;
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.6);
+        }
+
 
         @keyframes pulse {
             from {
@@ -212,11 +215,19 @@
             <section class="card md:w-3/4 flex flex-col items-center justify-center relative">
                 <h2 class="text-3xl">Manipulator Simulation</h2>
                 <canvas id="manipulatorCanvas" class="flex-grow"></canvas> <!-- flex-grow to fill available height -->
-                <div id="alarmMessageBox">
+                
+                <!-- Message Boxes - All positioned at top center -->
+                <div id="alarmMessageBox" class="message-box">
                     WARNING: End Effector Touches Floor!
                 </div>
-                <div id="holdMessageBox">
+                <div id="holdMessageBox" class="message-box">
                     Gripper Holding Object!
+                </div>
+                <div id="objectPickedUpMessageBox" class="message-box">
+                    Object Picked Up!
+                </div>
+                <div id="objectPlacedDownMessageBox" class="message-box">
+                    Object Placed Down!
                 </div>
             </section>
 
@@ -372,6 +383,8 @@
         const endEffectorOrientationDisplay = document.getElementById('endEffectorOrientation');
         const alarmMessageBox = document.getElementById('alarmMessageBox'); // Get the alarm message box element
         const holdMessageBox = document.getElementById('holdMessageBox'); // Get the new hold message box element
+        const objectPickedUpMessageBox = document.getElementById('objectPickedUpMessageBox'); // New: Picked up message box
+        const objectPlacedDownMessageBox = document.getElementById('objectPlacedDownMessageBox'); // New: Placed down message box
         const resetButton = document.getElementById('resetButton'); // Get the reset button
         const objectSelect = document.getElementById('objectSelect'); // Get the object type dropdown
 
@@ -716,11 +729,16 @@
 
             const distance = gripperHoldPointGlobalPos.distanceTo(targetObjectGlobalPos);
 
+            const wasHoldingObject = isHoldingObject; // Store previous state
+
             // Logic to pick up object
             if (gripperOpening <= gripperClosedThreshold && distance < pickDistanceThreshold && !isHoldingObject) {
                 // Attach object to the gripperHoldPoint
                 gripperHoldPoint.attach(targetObject);
                 isHoldingObject = true;
+                // Show pick-up message briefly
+                objectPickedUpMessageBox.style.display = 'block';
+                setTimeout(() => { objectPickedUpMessageBox.style.display = 'none'; }, 1500); // Hide after 1.5 seconds
                 // Show hold message
                 holdMessageBox.style.display = 'block';
                 // Disable target object sliders when held
@@ -734,6 +752,9 @@
                 // Detach object from gripperHoldPoint and attach to scene
                 scene.attach(targetObject);
                 isHoldingObject = false;
+                // Show placed-down message briefly
+                objectPlacedDownMessageBox.style.display = 'block';
+                setTimeout(() => { objectPlacedDownMessageBox.style.display = 'none'; }, 1500); // Hide after 1.5 seconds
                 // Hide hold message
                 holdMessageBox.style.display = 'none';
                 // Enable target object sliders when released
@@ -741,6 +762,14 @@
                 targetYSlider.disabled = false;
                 targetZSlider.disabled = false;
                 randomTargetButton.disabled = false;
+            }
+
+            // Ensure hold message is only visible when actually holding
+            if (isHoldingObject && holdMessageBox.style.display === 'none') {
+                holdMessageBox.style.display = 'block';
+            } else if (!isHoldingObject && holdMessageBox.style.display === 'block' && !objectPlacedDownMessageBox.style.display === 'block') {
+                // Only hide if not currently showing "placed down"
+                holdMessageBox.style.display = 'none';
             }
         }
 
@@ -803,9 +832,10 @@
          * Sets a random position for the target object.
          */
         function setRandomTargetPosition() {
+            // Ensure target is away from the base
             targetXSlider.value = (Math.random() * 2 - 1).toFixed(1); // -1 to 1
-            targetYSlider.value = (Math.random() * 0.15 + 0.05).toFixed(2); // 0.05 to 0.20 (just above floor)
-            targetZSlider.value = (Math.random() * 1 - 1.0).toFixed(1); // -1.0 to 0.0 (in front of manipulator)
+            targetYSlider.value = (Math.random() * 0.3 + 0.2).toFixed(2); // 0.20 to 0.50 (above floor/base)
+            targetZSlider.value = (Math.random() * 0.5 - 1.5).toFixed(1); // -1.5 to -1.0 (further in front)
             updateTargetPosition();
         }
 
@@ -889,6 +919,9 @@
 
             isHoldingObject = false; // Ensure object is not held
             holdMessageBox.style.display = 'none'; // Hide hold message
+            objectPickedUpMessageBox.style.display = 'none'; // Hide pick up message
+            objectPlacedDownMessageBox.style.display = 'none'; // Hide placed down message
+
 
             // Re-enable target object sliders
             targetXSlider.disabled = false;
