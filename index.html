@@ -11,7 +11,7 @@
         html, body {
             height: 100%; /* Ensure html and body take full viewport height */
             margin: 0;
-            overflow: hidden; /* Prevent overall scrollbars unless content overflows specific sections */
+            /* Removed: overflow: hidden; */ /* This was causing the scroll lock */
             font-family: 'Inter', sans-serif;
             background-color: #f0f2f5;
             color: #333;
@@ -21,7 +21,8 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
-            height: 100%; /* Make container take full height */
+            /* Removed fixed height: height: 100%; */ /* Allow container to grow with content */
+            min-height: 100vh; /* Ensure it takes at least full viewport height */
             display: flex; /* Use flexbox for overall layout */
             flex-direction: column; /* Stack sections vertically */
         }
@@ -200,7 +201,7 @@
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
-    <div class="container min-h-screen">
+    <div class="container"> <!-- Removed min-h-screen from here as body now handles it -->
         <header class="text-center py-10">
             <h1 class="text-5xl font-extrabold text-blue-700">N Link Serial Manipulator</h1>
             <p class="text-xl text-gray-600 mt-3">Interactive Forward Kinematics & Control</p>
@@ -336,8 +337,10 @@
         let links = []; // Stores the THREE.Mesh objects for the visual links
         let joints = []; // Stores the THREE.Group objects that act as joint pivots/rotation points
         let endEffector = new THREE.Group();
+        // Gripper components (restored to prior version)
         let gripperLeft, gripperRight;
         let gripperHoldPoint; // New group for the object's attachment point
+        let gripperOrientationGroup; // Declared globally
 
         // --- DOM Elements ---
         const manipulatorCanvas = document.getElementById('manipulatorCanvas');
@@ -474,46 +477,59 @@
         function createEndEffector() {
             endEffector = new THREE.Group(); // This group is attached to the last link
 
+            // NEW: Add a wrist support (retained from previous request)
+            const wristHeight = 0.2;
+            const wristRadius = 0.1;
+            const wristGeometry = new THREE.CylinderGeometry(wristRadius, wristRadius, wristHeight, 16);
+            const wristMaterial = new THREE.MeshStandardMaterial({ color: 0x999999, metalness: 0.3, roughness: 0.5 });
+            const wristMesh = new THREE.Mesh(wristGeometry, wristMaterial);
+            wristMesh.position.y = -wristHeight / 2; // Position it below the endEffector's origin
+            wristMesh.castShadow = true;
+            wristMesh.receiveShadow = true;
+            endEffector.add(wristMesh);
+
             // Create a sub-group to handle the fixed downward orientation of the gripper
-            const gripperOrientationGroup = new THREE.Group();
+            gripperOrientationGroup = new THREE.Group();
             gripperOrientationGroup.rotation.x = Math.PI / 2; // Rotate to point downwards
+            // Shift the entire gripper down by the wrist height
+            gripperOrientationGroup.position.y = -wristHeight; // Offset from endEffector's origin
             endEffector.add(gripperOrientationGroup);
 
-            // Gripper Body (main part)
+            // Gripper Body (main part - back to purple box)
             const bodyWidth = 0.2;
             const bodyHeight = 0.2;
             const bodyDepth = 0.3;
             const gripperBodyGeometry = new THREE.BoxGeometry(bodyWidth, bodyHeight, bodyDepth);
             const gripperBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x6b46c1, metalness: 0.4, roughness: 0.6 }); // Purple
             const gripperBody = new THREE.Mesh(gripperBodyGeometry, gripperBodyMaterial);
-            gripperBody.position.y = bodyDepth / 2; // Position relative to rotated orientation
+            gripperBody.position.y = -bodyDepth / 2; // Position relative to rotated orientation
             gripperBody.castShadow = true;
             gripperBody.receiveShadow = true;
             gripperOrientationGroup.add(gripperBody);
 
-            // Finger Geometry - now cylindrical
+            // Finger Geometry - now cylindrical (restored)
             const fingerRadius = 0.05;
             const fingerLength = 0.3; 
             const fingerGeometry = new THREE.CylinderGeometry(fingerRadius, fingerRadius, fingerLength, 16); // Cylindrical fingers
             const fingerMaterial = new THREE.MeshStandardMaterial({ color: 0x9f7aea, metalness: 0.5, roughness: 0.4 }); // Lighter purple
 
-            // Left Finger
+            // Left Finger (restored positioning)
             gripperLeft = new THREE.Mesh(fingerGeometry, fingerMaterial);
-            gripperLeft.position.set(-bodyWidth / 2, bodyDepth + (fingerLength / 2), 0); // Adjusted for cylindrical fingers
+            gripperLeft.position.set(-bodyWidth / 2, -bodyDepth - (fingerLength / 2), 0); // Adjusted for connection
             gripperLeft.castShadow = true;
             gripperLeft.receiveShadow = true;
             gripperOrientationGroup.add(gripperLeft);
 
-            // Right Finger
+            // Right Finger (restored positioning)
             gripperRight = new THREE.Mesh(fingerGeometry, fingerMaterial);
-            gripperRight.position.set(bodyWidth / 2, bodyDepth + (fingerLength / 2), 0); // Adjusted for cylindrical fingers
+            gripperRight.position.set(bodyWidth / 2, -bodyDepth - (fingerLength / 2), 0); // Adjusted for connection
             gripperRight.castShadow = true;
             gripperRight.receiveShadow = true;
             gripperOrientationGroup.add(gripperRight);
 
-            // Gripper Hold Point - where the object will be attached
+            // Gripper Hold Point - where the object will be attached (restored positioning)
             gripperHoldPoint = new THREE.Group();
-            gripperHoldPoint.position.set(0, bodyDepth + fingerLength, 0); // At the very bottom center of the gripper
+            gripperHoldPoint.position.set(0, -bodyDepth - fingerLength + 0.05, 0); // At the very bottom center of the gripper
             gripperOrientationGroup.add(gripperHoldPoint);
         }
 
@@ -828,3 +844,4 @@
     </script>
 </body>
 </html>
+
