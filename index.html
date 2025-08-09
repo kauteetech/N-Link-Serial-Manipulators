@@ -684,13 +684,13 @@
             // Calculate and display coordinates
             calculateAndDisplayJointCoordinates();
 
-            // Check for end effector touching the floor
-            let endEffectorGlobalPos = new THREE.Vector3();
-            if (endEffector) {
-                endEffector.getWorldPosition(endEffectorGlobalPos);
-                // Define a threshold for "touching the floor" (Y coordinate close to 0)
-                const floorThreshold = 0.05; 
-                if (endEffectorGlobalPos.y <= floorThreshold) {
+            // Check for end effector close to the floor (using gripperHoldPoint)
+            let gripperLowestPointGlobalPos = new THREE.Vector3();
+            if (gripperHoldPoint) { 
+                gripperHoldPoint.getWorldPosition(gripperLowestPointGlobalPos);
+                // Define a safety distance from the floor (e.g., 20cm)
+                const safetyDistance = 0.2; 
+                if (gripperLowestPointGlobalPos.y <= safetyDistance) {
                     alarmMessageBox.style.display = 'block'; // Show alarm
                 } else {
                     alarmMessageBox.style.display = 'none'; // Hide alarm
@@ -833,9 +833,19 @@
          */
         function setRandomTargetPosition() {
             // Ensure target is away from the base
-            targetXSlider.value = (Math.random() * 2 - 1).toFixed(1); // -1 to 1
+            // Min X/Z absolute value to ensure distance from center
+            const minAbsXZ = 0.5; 
+            let randomX = (Math.random() * 2 - 1); // -1 to 1
+            let randomZ = (Math.random() * 0.5 - 1.5); // -1.5 to -1.0 (further in front)
+
+            // Ensure X is outside a central zone
+            if (Math.abs(randomX) < minAbsXZ) {
+                randomX = randomX < 0 ? -(minAbsXZ + Math.random() * 0.5) : (minAbsXZ + Math.random() * 0.5);
+            }
+
+            targetXSlider.value = randomX.toFixed(1); 
             targetYSlider.value = (Math.random() * 0.3 + 0.2).toFixed(2); // 0.20 to 0.50 (above floor/base)
-            targetZSlider.value = (Math.random() * 0.5 - 1.5).toFixed(1); // -1.5 to -1.0 (further in front)
+            targetZSlider.value = randomZ.toFixed(1); 
             updateTargetPosition();
         }
 
